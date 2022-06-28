@@ -45,16 +45,15 @@ public class QueueJobServiceImpl implements QueueJobService {
 
         System.out.println("* Listener: [" + getAvailableThreads() + "]");
 
-        if (getAvailableThreads() > 0) {
+        if (getQueueTasks() < maxThreads * 2) {
 
             List<QueueJobEntity> jobs = queueJobRepository.findTop100ByCompleteAndUrgentAndStatusAndSemaphoreIsNullOrderByIdAsc(true, true, "PND");
+            threadPoolTaskExecutor.getThreadPoolExecutor().getQueue().clear();
             System.out.println("\tLeemos nuevas tareas: [" + jobs.size() + "]");
 
             for (QueueJobEntity job : jobs) {
-                executeOrchestrator(job);
-
-                if (getAvailableThreads() == 0)
-                    break;
+                //executeOrchestrator(job);
+                consumerService.execute(job);
             }
         }
 
@@ -77,6 +76,10 @@ public class QueueJobServiceImpl implements QueueJobService {
 
     private int getAvailableThreads() {
         return maxThreads - threadPoolTaskExecutor.getActiveCount();
+    }
+
+    private int getQueueTasks() {
+        return threadPoolTaskExecutor.getThreadPoolExecutor().getQueue().size();
     }
 
 }
